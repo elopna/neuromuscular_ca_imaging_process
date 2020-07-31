@@ -85,6 +85,9 @@ def plot_transient(files, path, thresh, background):
     dff = [(df/f-1)*100 for df in means]
     dff_raw = dff.copy()
     dff = list(pd.Series(dff).rolling(15, center=True).median().fillna(method='bfill').fillna(method='ffill').values)
+    start_ampl = np.mean(dff[:10])
+    dff_raw = dff_raw - start_ampl
+    dff = dff - start_ampl
     plt.plot(dff_raw)
     plt.plot(dff, c='r')
     plt.show()
@@ -93,17 +96,24 @@ def plot_transient(files, path, thresh, background):
     ampl = np.mean(np.sort(dff)[-10:])
     t1_rise = np.searchsorted(dff[:max_val_t], ampl*0.2, side="left") - 1
     t2_rise = np.searchsorted(dff[:max_val_t], ampl*0.8, side="left") + 1
-    f_rise = interp1d(dff[t1_rise:t2_rise],np.arange(t1_rise,t2_rise),'linear')
-    t2_decay = np.searchsorted(-np.array(dff[max_val_t+10:]), -ampl/np.e, side="left") -1
-    f_decay = interp1d(dff[max_val_t-1:len(dff)],np.arange(max_val_t-1,len(dff)),'linear')
-    rise_time = f_rise(ampl*0.8) - f_rise(ampl*0.2)
-    decay = f_decay(ampl/np.e) - f_decay(ampl)
-    print('Amplitude =', ampl)
-    print('Rise time =', rise_time)
-    print('Decay =', decay)
+
+    # print(max_val_t, ampl)
+    # print(t1_rise,t2_rise)
+
+    try:
+        f_rise = interp1d(dff[t1_rise:t2_rise],np.arange(t1_rise,t2_rise),'linear')
+        t2_decay = np.searchsorted(-np.array(dff[max_val_t+10:]), -ampl/np.e, side="left") -1
+        f_decay = interp1d(dff[max_val_t-1:len(dff)],np.arange(max_val_t-1,len(dff)),'linear')
+        rise_time = f_rise(ampl*0.8) - f_rise(ampl*0.2)
+        decay = f_decay(ampl/np.e) - f_decay(ampl)
+        print('Amplitude =', ampl)
+        print('Rise time =', rise_time)
+        print('Decay =', decay)
+    except:
+        rise_time, decay = np.nan, np.nan
     return dff, ampl, rise_time, decay
 
-def transient_analysis(path):
+def transient_analysis(path, fps=1000):
     for_excel = pd.DataFrame(columns=['ROI number', 'Amplitude', 'Rise time', 'Decay'])
     files = os.listdir(path)
     thresh, background, mean, variance, labels = get_multi_mask_n_background(files, path)
