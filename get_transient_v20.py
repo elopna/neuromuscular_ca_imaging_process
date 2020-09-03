@@ -73,7 +73,7 @@ def get_multi_mask_n_background(files, path):
     mean = np.round(np.mean(means),2)
     return res_mask, background, mean, variance, labels
 
-def plot_transient(files, path, thresh, background):
+def plot_transient(files, path, thresh, background, fps):
     means = []
     for file in files:
         img = cv2.imread(f'{path}{file}')
@@ -88,8 +88,11 @@ def plot_transient(files, path, thresh, background):
     start_ampl = np.mean(dff[:10])
     dff_raw = dff_raw - start_ampl
     dff = dff - start_ampl
+    x_labels = range(int(1000 * fps/1000))
     plt.plot(dff_raw)
+    plt.xlabel(x_labels)
     plt.plot(dff, c='r')
+    plt.xlabel(x_labels)
     plt.show()
     max_val = np.max(dff)
     max_val_t = np.argmax(dff)
@@ -123,7 +126,7 @@ def transient_analysis(path, fps=1000):
         plt.title(f'ROI {lb}')
         plt.show()
         trsh_temp = cv2.bitwise_and(thresh,thresh,mask=np.int8(labels==lb))
-        res, ampl, rise_time, decay = plot_transient(files, path, trsh_temp, background)
+        res, ampl, rise_time, decay = plot_transient(files, path, trsh_temp, background, fps)
         df_temp = pd.DataFrame([[lb, np.round(ampl,2), np.round(rise_time,2), np.round(decay,2)]],columns=['ROI number', 'Amplitude', 'Rise time', 'Decay'])
         for_excel = for_excel.append(df_temp)
     #     plt.imshow(labels==lb)
