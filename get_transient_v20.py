@@ -11,6 +11,7 @@ from scipy.interpolate import interp1d
 from scipy import ndimage
 from skimage.morphology import watershed
 from skimage.feature import peak_local_max
+from get_keypoints import alignImages
 import os
 
 def get_mask(img):
@@ -73,7 +74,7 @@ def get_multi_mask_n_background(files, path):
     mean = np.round(np.mean(means),2)
     return res_mask, background, mean, variance, labels
 
-def plot_transient(files, path, thresh, background, fps):
+def plot_transient(files, path, thresh, background, mltpl, count):
     means = []
     for file in files:
         img = cv2.imread(f'{path}{file}')
@@ -88,11 +89,13 @@ def plot_transient(files, path, thresh, background, fps):
     start_ampl = np.mean(dff[:10])
     dff_raw = dff_raw - start_ampl
     dff = dff - start_ampl
-    x_labels = range(int(1000 * fps/1000))
-    plt.plot(dff_raw)
-    plt.xlabel(x_labels)
-    plt.plot(dff, c='r')
-    plt.xlabel(x_labels)
+    x_labels = range(0, int(1000*mltpl), 100)
+    plt.plot(range(0, int(1000*mltpl), int(2*mltpl)), dff_raw)
+    plt.xticks(x_labels)
+    plt.xlabel('Time, ms')
+    plt.plot(range(0, int(1000*mltpl), int(2*mltpl)), dff, c='r')
+    plt.xticks(x_labels)
+    plt.xlabel('Time, ms')
     plt.show()
     max_val = np.max(dff)
     max_val_t = np.argmax(dff)
@@ -108,7 +111,9 @@ def plot_transient(files, path, thresh, background, fps):
         t2_decay = np.searchsorted(-np.array(dff[max_val_t+10:]), -ampl/np.e, side="left") -1
         f_decay = interp1d(dff[max_val_t-1:len(dff)],np.arange(max_val_t-1,len(dff)),'linear')
         rise_time = f_rise(ampl*0.8) - f_rise(ampl*0.2)
+        rise_time = rise_time * 2  * mltpl
         decay = f_decay(ampl/np.e) - f_decay(ampl)
+        decay = decay * 2 * mltpl
         print('Amplitude =', ampl)
         print('Rise time =', rise_time)
         print('Decay =', decay)
@@ -116,17 +121,22 @@ def plot_transient(files, path, thresh, background, fps):
         rise_time, decay = np.nan, np.nan
     return dff, ampl, rise_time, decay
 
-def transient_analysis(path, fps=1000):
+def transient_analysis(path, fps=1000, mask=0, control_img=''):
     for_excel = pd.DataFrame(columns=['ROI number', 'Amplitude', 'Rise time', 'Decay'])
     files = os.listdir(path)
+    count_files = len(files)
+    mltpl = count_files/fps
     thresh, background, mean, variance, labels = get_multi_mask_n_background(files, path)
+    if mask:
+        h, width, height = alignImages(files[0], control_img)
+        thresh = cv2.warpPerspective(mask, h, (width, height))
     # print(background, mean, variance)
     for lb in np.unique(labels)[1:]:
         plt.imshow(labels==lb)
         plt.title(f'ROI {lb}')
         plt.show()
         trsh_temp = cv2.bitwise_and(thresh,thresh,mask=np.int8(labels==lb))
-        res, ampl, rise_time, decay = plot_transient(files, path, trsh_temp, background, fps)
+        res, ampl, rise_time, decay = plot_transient(files, path, trsh_temp, background, mltpl, count_files)
         df_temp = pd.DataFrame([[lb, np.round(ampl,2), np.round(rise_time,2), np.round(decay,2)]],columns=['ROI number', 'Amplitude', 'Rise time', 'Decay'])
         for_excel = for_excel.append(df_temp)
     #     plt.imshow(labels==lb)
@@ -139,3 +149,4 @@ def transient_analysis(path, fps=1000):
     print()
     print('Result table:')
     print(for_excel)
+    return thresh
