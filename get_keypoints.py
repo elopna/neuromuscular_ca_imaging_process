@@ -14,7 +14,11 @@ GOOD_MATCH_PERCENT = 0.30
 img1 = cv2.imread('experiments/failed exps/190520T2pro/190520T2pro00000000.jpg')
 img2 = cv2.imread('experiments/failed exps/190520T2pro/190520T2pro00000499.jpg')
 
-def alignImages(im1, im2):
+def alignImages(im1, im2, path1):
+    MAX_FEATURES = 500
+    GOOD_MATCH_PERCENT = 0.30
+    im1 = cv2.imread(f'{path1}{im1}')
+    im2 = cv2.imread(im2)
     # Convert images to grayscale
     im1Gray = cv2.cvtColor(im1, cv2.COLOR_BGR2GRAY)
     im2Gray = cv2.cvtColor(im2, cv2.COLOR_BGR2GRAY)

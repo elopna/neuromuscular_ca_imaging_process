@@ -77,11 +77,12 @@ def get_multi_mask_n_background(files, path):
 def plot_transient(files, path, thresh, background, mltpl, count):
     means = []
     for file in files:
-        img = cv2.imread(f'{path}{file}')
-        img = img - background
-        img_thr = cv2.bitwise_and(img,img,mask = thresh)
-        mean_val = img_thr.mean()
-        means.append(mean_val)
+        if file[-3:]=='jpg':
+            img = cv2.imread(f'{path}{file}')
+            img = img - background
+            img_thr = cv2.bitwise_and(img,img,mask = thresh)
+            mean_val = img_thr.mean()
+            means.append(mean_val)
     f = np.mean(means[:1])
     dff = [(df/f-1)*100 for df in means]
     dff_raw = dff.copy()
@@ -121,14 +122,15 @@ def plot_transient(files, path, thresh, background, mltpl, count):
         rise_time, decay = np.nan, np.nan
     return dff, ampl, rise_time, decay
 
-def transient_analysis(path, fps=1000, mask=0, control_img=''):
+def transient_analysis(path, fps=1000, mask=[0], control_img=''):
     for_excel = pd.DataFrame(columns=['ROI number', 'Amplitude', 'Rise time', 'Decay'])
     files = os.listdir(path)
+    files = [f for f in files if f[-3:] == 'jpg']
     count_files = len(files)
     mltpl = count_files/fps
     thresh, background, mean, variance, labels = get_multi_mask_n_background(files, path)
-    if mask:
-        h, width, height = alignImages(files[0], control_img)
+    if len(mask)>1:
+        h, width, height = alignImages(files[0], control_img, path1=path)
         thresh = cv2.warpPerspective(mask, h, (width, height))
     # print(background, mean, variance)
     for lb in np.unique(labels)[1:]:
